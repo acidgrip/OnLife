@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct OnLifeApp: App {
+    @State private var authState = AuthenticationState()
+    
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -25,7 +27,13 @@ struct OnLifeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if authState.isAuthenticated {
+                HomeView()
+                    .environment(authState)
+            } else {
+                LoginView()
+                    .environment(authState)
+            }
         }
         .modelContainer(sharedModelContainer)
     }
