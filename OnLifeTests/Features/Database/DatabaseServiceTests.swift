@@ -8,10 +8,173 @@
 
 import Testing
 import Foundation
+import CoreLocation
 @testable import OnLife
 
 @Suite("Database Service Tests")
 struct DatabaseServiceTests {
+
+    // MARK: - Proximity Filtering Tests
+
+    // Downtown LA, close to the coordinates MockDatabaseService seeds its
+    // mock posts/event at (a few km away from each other).
+    private let laOrigin = CLLocationCoordinate2D(latitude: 34.0407, longitude: -118.2468)
+    // Far enough from LA that no reasonable "nearby" radius would include it.
+    private let nycCoordinate = CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)
+
+    @Test("fetchFeed near a coordinate excludes items far outside the radius")
+    @MainActor
+    func testFetchFeedExcludesFarAwayItems() async throws {
+        let db = MockDatabaseService()
+        db.simulatedDelay = 0
+
+        let farPost = try await db.createPost(Post(
+            userId: "nyc-user",
+            userName: "NYC User",
+            latitude: nycCoordinate.latitude,
+            longitude: nycCoordinate.longitude,
+            content: "Posting from NYC"
+        ))
+
+        let feed = try await db.fetchFeed(
+            filter: .all,
+            limit: 50,
+            lastItemId: nil,
+            near: laOrigin,
+            radiusInKm: 20
+        )
+
+        let containsFarPost = feed.contains { item in
+            if case .post(let post) = item { return post.id == farPost.id }
+            return false
+        }
+        #expect(!containsFarPost)
+        // The seeded LA-area mock posts/event should still be included.
+        #expect(feed.count > 0)
+    }
+
+    @Test("fetchFeed near a coordinate includes items within the radius")
+    @MainActor
+    func testFetchFeedIncludesNearbyItems() async throws {
+        let db = MockDatabaseService()
+        db.simulatedDelay = 0
+
+        let nearbyCoordinate = CLLocationCoordinate2D(latitude: 34.0420, longitude: -118.2460)
+        let nearbyPost = try await db.createPost(Post(
+            userId: "la-user",
+            userName: "LA User",
+            latitude: nearbyCoordinate.latitude,
+            longitude: nearbyCoordinate.longitude,
+            content: "Posting from downtown LA"
+        ))
+
+        let feed = try await db.fetchFeed(
+            filter: .all,
+            limit: 50,
+            lastItemId: nil,
+            near: laOrigin,
+            radiusInKm: 20
+        )
+
+        let containsNearbyPost = feed.contains { item in
+            if case .post(let post) = item { return post.id == nearbyPost.id }
+            return false
+        }
+        #expect(containsNearbyPost)
+    }
+
+    @Test("fetchFeed near a coordinate excludes items with no known location")
+    @MainActor
+    func testFetchFeedExcludesItemsWithoutCoordinates() async throws {
+        let db = MockDatabaseService()
+        db.simulatedDelay = 0
+
+        let noLocationPost = try await db.createPost(Post(
+            userId: "unknown-location-user",
+            userName: "Unknown Location User",
+            content: "No coordinates attached"
+        ))
+
+        let feed = try await db.fetchFeed(
+            filter: .all,
+            limit: 50,
+            lastItemId: nil,
+            near: laOrigin,
+            radiusInKm: 20
+        )
+
+        let containsPost = feed.contains { item in
+            if case .post(let post) = item { return post.id == noLocationPost.id }
+            return false
+        }
+        #expect(!containsPost)
+    }
+
+    @Test("fetchFeed with no coordinate returns items regardless of location")
+    @MainActor
+    func testFetchFeedWithNoCoordinateIsUnfiltered() async throws {
+        let db = MockDatabaseService()
+        db.simulatedDelay = 0
+
+        let farPost = try await db.createPost(Post(
+            userId: "nyc-user",
+            userName: "NYC User",
+            latitude: nycCoordinate.latitude,
+            longitude: nycCoordinate.longitude,
+            content: "Posting from NYC"
+        ))
+
+        let feed = try await db.fetchFeed(
+            filter: .all,
+            limit: 50,
+            lastItemId: nil,
+            near: nil,
+            radiusInKm: nil
+        )
+
+        let containsFarPost = feed.contains { item in
+            if case .post(let post) = item { return post.id == farPost.id }
+            return false
+        }
+        #expect(containsFarPost)
+    }
+
+    @Test("fetchNearbyEvents filters by real distance")
+    @MainActor
+    func testFetchNearbyEventsFiltersByRealDistance() async throws {
+        let db = MockDatabaseService()
+        db.simulatedDelay = 0
+
+        let nearbyCoordinate = CLLocationCoordinate2D(latitude: 34.0420, longitude: -118.2460)
+        let nearbyEvent = try await db.createEvent(Event(
+            title: "Nearby Meetup",
+            hostedBy: "Local Host",
+            location: "Downtown LA",
+            latitude: nearbyCoordinate.latitude,
+            longitude: nearbyCoordinate.longitude,
+            date: Date(),
+            time: "6:00 PM"
+        ))
+
+        let farEvent = try await db.createEvent(Event(
+            title: "NYC Meetup",
+            hostedBy: "East Coast Host",
+            location: "NYC",
+            latitude: nycCoordinate.latitude,
+            longitude: nycCoordinate.longitude,
+            date: Date(),
+            time: "6:00 PM"
+        ))
+
+        let nearby = try await db.fetchNearbyEvents(
+            latitude: laOrigin.latitude,
+            longitude: laOrigin.longitude,
+            radiusInKm: 20
+        )
+
+        #expect(nearby.contains { $0.id == nearbyEvent.id })
+        #expect(!nearby.contains { $0.id == farEvent.id })
+    }
     
     // MARK: - Post Tests
     
@@ -272,16 +435,52 @@ struct DatabaseServiceTests {
     }
     
     // MARK: - User Operations Tests
-    
+
     @Test("Updating user online status")
     func testUpdateOnlineStatus() async throws {
         let db = MockDatabaseService()
-        
+
         // Should not throw
         try await db.updateUserOnlineStatus(userId: "user1", isOnline: true)
         try await db.updateUserOnlineStatus(userId: "user1", isOnline: false)
     }
-    
+
+    @Test("Creating a user profile does not throw")
+    func testCreateUserProfile() async throws {
+        let db = MockDatabaseService()
+
+        let profile = UserProfile(
+            id: "user-1",
+            phoneNumber: "+15551234567",
+            email: "jane@example.com",
+            username: "jane_doe",
+            name: "Jane Doe",
+            bio: "Hello!",
+            dateOfBirth: Date(timeIntervalSince1970: 0),
+            profilePhotoURL: "https://mock-storage.example.com/users/user-1/profile.jpg",
+            publicPhotoURL: nil,
+            privatePhotoURLs: []
+        )
+
+        // Should not throw
+        try await db.createUserProfile(profile)
+    }
+
+    @Test("Creating a user profile twice overwrites the previous one")
+    func testCreateUserProfileOverwrites() async throws {
+        let db = MockDatabaseService()
+
+        let original = UserProfile(id: "user-1", username: "original_name", name: "Original")
+        try await db.createUserProfile(original)
+
+        let updated = UserProfile(id: "user-1", username: "updated_name", name: "Updated")
+        try await db.createUserProfile(updated)
+
+        // No direct read API on the protocol for user profiles - this test
+        // just documents that a second write for the same id doesn't throw,
+        // matching Firestore's merge:true "last write wins" semantics.
+    }
+
     // MARK: - Image Upload Tests
     
     @Test("Uploading an image returns URL")

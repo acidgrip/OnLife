@@ -17,7 +17,7 @@ struct AuthServiceIntegrationTests {
     @Test("ActivityFeedStore uses AuthService current user ID")
     @MainActor
     func storeUsesAuthServiceUserId() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // Sign in
@@ -35,7 +35,7 @@ struct AuthServiceIntegrationTests {
     @Test("Store creates post with authenticated user ID")
     @MainActor
     func createPostWithAuthenticatedUser() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // Set up authentication
@@ -59,7 +59,7 @@ struct AuthServiceIntegrationTests {
     @Test("Complete authentication flow works end-to-end")
     @MainActor
     func completeAuthenticationFlow() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // 1. Start unauthenticated
@@ -85,7 +85,7 @@ struct AuthServiceIntegrationTests {
     @Test("User ID persists throughout session")
     @MainActor
     func userIdPersistsThroughoutSession() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         try await mockAuth.signInAnonymously()
@@ -107,7 +107,7 @@ struct AuthServiceIntegrationTests {
     @Test("App handles sign in failure gracefully")
     @MainActor
     func handleSignInFailure() async {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         mockAuth.shouldFailSignIn = true
         
@@ -130,7 +130,7 @@ struct AuthServiceIntegrationTests {
     @Test("App handles sign out failure gracefully")
     @MainActor
     func handleSignOutFailure() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         try await mockAuth.signInAnonymously()
@@ -153,7 +153,7 @@ struct AuthServiceIntegrationTests {
     @Test("Multiple concurrent reads don't cause issues")
     @MainActor
     func concurrentReads() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         try await mockAuth.signInAnonymously()
@@ -184,7 +184,7 @@ struct AuthServiceIntegrationTests {
     @Test("State transitions are atomic")
     @MainActor
     func stateTransitionsAreAtomic() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // Before sign in
@@ -223,7 +223,7 @@ struct AuthServiceIntegrationTests {
     @Test("Authentication state queries are fast", .timeLimit(.minutes(1)))
     @MainActor
     func authenticationStatePerformance() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         try await mockAuth.signInAnonymously()
@@ -241,7 +241,7 @@ struct AuthServiceIntegrationTests {
     @Test("Multiple sign in/out cycles complete quickly", .timeLimit(.minutes(1)))
     @MainActor
     func multipleAuthCyclesPerformance() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         
         for _ in 0..<10 {
             mockAuth.reset()
@@ -261,7 +261,7 @@ struct AuthServiceDatabaseIntegrationTests {
     @Test("Database operations use authenticated user ID")
     @MainActor
     func databaseUsesAuthenticatedUserId() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         try await mockAuth.signInAnonymously()
@@ -282,7 +282,7 @@ struct AuthServiceDatabaseIntegrationTests {
     @Test("Creating post without authentication uses fallback ID")
     @MainActor
     func postCreationWithoutAuth() async {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // No authentication
@@ -310,7 +310,7 @@ struct RealWorldAuthenticationScenarios {
     @Test("User opens app, signs in, creates post, signs out")
     @MainActor
     func typicalUserSession() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // App opens - not authenticated
@@ -337,7 +337,7 @@ struct RealWorldAuthenticationScenarios {
     @Test("User signs in, app crashes, user reopens app")
     @MainActor
     func appCrashScenario() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // User signs in
@@ -358,7 +358,7 @@ struct RealWorldAuthenticationScenarios {
     @Test("User tries multiple operations in sequence")
     @MainActor
     func multipleOperationsSequence() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         try await mockAuth.signInAnonymously()
@@ -389,7 +389,7 @@ struct AuthenticationEdgeCases {
     @Test("Accessing properties before initialization completes")
     @MainActor
     func propertyAccessBeforeInit() async {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // Should not crash
@@ -405,7 +405,7 @@ struct AuthenticationEdgeCases {
     @Test("Multiple rapid sign in attempts")
     @MainActor
     func rapidSignInAttempts() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         // Try signing in multiple times rapidly
@@ -423,7 +423,7 @@ struct AuthenticationEdgeCases {
     @Test("Sign out while not signed in")
     @MainActor
     func signOutWhileNotSignedIn() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         #expect(!mockAuth.isAuthenticated)
@@ -437,7 +437,7 @@ struct AuthenticationEdgeCases {
     @Test("Accessing user ID after sign out")
     @MainActor
     func accessUserIdAfterSignOut() async throws {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         
         try await mockAuth.signInAnonymously()

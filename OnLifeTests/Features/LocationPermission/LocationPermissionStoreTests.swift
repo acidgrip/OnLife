@@ -583,15 +583,15 @@ struct LocationPermissionStoreTests {
     @MainActor
     func testPermissionDeniedFlow() async {
         let store = LocationPermissionStore()
-        
+
         // Start: not determined
         store.setAuthorizationStatus(.notDetermined)
         #expect(store.canRequestPermission)
-        
+
         // Request permission
         store.requestPermission()
         #expect(store.hasRequestedPermission)
-        
+
         // Permission denied
         store.setAuthorizationStatus(.denied)
         #expect(store.isDenied)
@@ -599,4 +599,51 @@ struct LocationPermissionStoreTests {
         #expect(!store.canRequestPermission)
     }
     #endif
+
+    // MARK: - Current Location Tests
+
+    @Test("currentLocation starts nil")
+    @MainActor
+    func testCurrentLocationStartsNil() async {
+        let store = LocationPermissionStore()
+
+        #expect(store.currentLocation == nil)
+    }
+
+    @Test("didUpdateLocations publishes the most recent location fix")
+    @MainActor
+    func testDidUpdateLocationsPublishesLatest() async throws {
+        let store = LocationPermissionStore()
+        let manager = CLLocationManager()
+
+        let first = CLLocation(latitude: 34.0403, longitude: -118.2345)
+        let second = CLLocation(latitude: 34.0511, longitude: -118.2430)
+
+        store.locationManager(manager, didUpdateLocations: [first, second])
+
+        // The delegate callback hops to the MainActor via a detached Task;
+        // give it a beat to land before asserting.
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(store.currentLocation?.coordinate.latitude == second.coordinate.latitude)
+        #expect(store.currentLocation?.coordinate.longitude == second.coordinate.longitude)
+    }
+
+    @Test("didUpdateLocations with an empty array leaves currentLocation unchanged")
+    @MainActor
+    func testDidUpdateLocationsEmptyArrayIsNoOp() async throws {
+        let store = LocationPermissionStore()
+        let manager = CLLocationManager()
+
+        let fix = CLLocation(latitude: 34.0403, longitude: -118.2345)
+        store.locationManager(manager, didUpdateLocations: [fix])
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(store.currentLocation != nil)
+
+        store.locationManager(manager, didUpdateLocations: [])
+        try await Task.sleep(for: .milliseconds(50))
+
+        // Still the last known fix -- an empty update shouldn't clear it.
+        #expect(store.currentLocation?.coordinate.latitude == fix.coordinate.latitude)
+    }
 }

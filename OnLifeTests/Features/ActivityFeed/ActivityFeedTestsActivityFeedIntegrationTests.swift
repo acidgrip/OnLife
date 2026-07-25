@@ -15,7 +15,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Complete user flow - like post, bookmark event, join event")
     func testCompleteUserFlow() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         // Verify initial state
@@ -77,7 +77,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Feed maintains data integrity across multiple operations")
     func testFeedDataIntegrity() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         let initialFeedCount = store.feedItems.count
@@ -108,7 +108,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Filter changes work with existing feed data")
     func testFilterWithFeedData() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         #expect(store.selectedFilter == .all)
@@ -131,7 +131,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Feed refresh maintains state")
     func testFeedRefreshMaintainsState() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         // Set some state
@@ -152,7 +152,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Multiple rapid state changes handle correctly")
     func testRapidStateChanges() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         // Rapid online/offline toggles
@@ -176,7 +176,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Like, unlike, like post works correctly")
     func testMultipleLikeUnlikeSequence() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         guard case .post(let originalPost) = store.feedItems[0] else {
@@ -221,7 +221,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Bookmark and join event independently")
     func testBookmarkAndJoinIndependence() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         guard case .event(let event) = store.feedItems[1] else {
@@ -265,7 +265,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Feed items can be processed sequentially")
     func testSequentialFeedProcessing() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         for item in store.feedItems {
@@ -289,7 +289,7 @@ struct ActivityFeedIntegrationTests {
     
     @Test("Store state remains consistent after errors")
     func testStoreConsistencyAfterErrors() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         let initialState = (

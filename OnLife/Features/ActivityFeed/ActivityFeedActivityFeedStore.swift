@@ -5,6 +5,7 @@
 //  Created by Daniel Lee on 6/25/26.
 //
 
+import CoreLocation
 import Foundation
 
 @MainActor
@@ -16,31 +17,40 @@ final class ActivityFeedStore {
     var selectedFilter: FeedFilter = .all
     var errorMessage: String?
     var showError = false
-    
+
     // Database service (injected for testability)
     private let database: DatabaseService
-    
+
     // Auth service
     private let authService: AuthService
-    
+
+    // Location source (injected for testability, mirrors database/authService)
+    private let location: LocationPermissionStore
+
     // Current user ID (from auth service)
     private var currentUserId: String {
         authService.currentUserId ?? "anonymous"
     }
-    
+
+    // Default "nearby" search radius used when loading the feed and there's
+    // no user-facing radius control yet.
+    private let defaultRadiusInKm: Double = 50
+
     // Feed observer for real-time updates
     private nonisolated(unsafe) var feedObserver: DatabaseObserver?
-    
+
     // MARK: - Initialization
-    
+
     init(
         database: DatabaseService? = nil,
         authService: AuthService = .shared,
+        location: LocationPermissionStore = .shared,
         autoLoad: Bool = true
     ) {
         self.database = database ?? DatabaseManager.shared.service
         self.authService = authService
-        
+        self.location = location
+
         if autoLoad {
             Task {
                 await loadFeed()
@@ -68,14 +78,22 @@ final class ActivityFeedStore {
     func loadFeed() async {
         isLoading = true
         defer { isLoading = false }
-        
+
+        // Falls back to an unfiltered fetch when we don't have a location
+        // fix yet (permission not granted, or no fix delivered yet) --
+        // matches this store's existing graceful-degradation style rather
+        // than blocking the feed on location.
+        let coordinate = location.currentLocation?.coordinate
+
         do {
             feedItems = try await database.fetchFeed(
                 filter: selectedFilter,
                 limit: 50,
-                lastItemId: nil
+                lastItemId: nil,
+                near: coordinate,
+                radiusInKm: coordinate != nil ? defaultRadiusInKm : nil
             )
-            
+
             // Optionally set up real-time listener
             // observeFeedChanges()
         } catch {
@@ -96,6 +114,8 @@ final class ActivityFeedStore {
                 userName: updatedPost.userName,
                 userProfileImageURL: updatedPost.userProfileImageURL,
                 userLocation: updatedPost.userLocation,
+                latitude: updatedPost.latitude,
+                longitude: updatedPost.longitude,
                 content: updatedPost.content,
                 timestamp: updatedPost.timestamp,
                 likeCount: updatedPost.isLiked ? updatedPost.likeCount - 1 : updatedPost.likeCount + 1,
@@ -127,6 +147,8 @@ final class ActivityFeedStore {
                 hostedBy: updatedEvent.hostedBy,
                 imageURL: updatedEvent.imageURL,
                 location: updatedEvent.location,
+                latitude: updatedEvent.latitude,
+                longitude: updatedEvent.longitude,
                 date: updatedEvent.date,
                 time: updatedEvent.time,
                 attendeeCount: updatedEvent.attendeeCount,
@@ -159,6 +181,8 @@ final class ActivityFeedStore {
                 hostedBy: updatedEvent.hostedBy,
                 imageURL: updatedEvent.imageURL,
                 location: updatedEvent.location,
+                latitude: updatedEvent.latitude,
+                longitude: updatedEvent.longitude,
                 date: updatedEvent.date,
                 time: updatedEvent.time,
                 attendeeCount: updatedEvent.isJoined ? updatedEvent.attendeeCount - 1 : updatedEvent.attendeeCount + 1,
@@ -195,14 +219,22 @@ final class ActivityFeedStore {
             // Get current user info
             let userId = currentUserId
             let userName = "User \(userId.prefix(8))" // TODO: Get from user profile
-            
+
+            // Attach the device's current coordinate automatically, if
+            // known -- no location UI exists in ComposePostView, matching
+            // the existing UX where `location` (the display string) is
+            // already optional and not user-entered there either.
+            let coordinate = self.location.currentLocation?.coordinate
+
             let post = Post(
                 userId: userId,
                 userName: userName,
                 userLocation: location,
+                latitude: coordinate?.latitude,
+                longitude: coordinate?.longitude,
                 content: content
             )
-            
+
             let createdPost = try await database.createPost(post)
             
             // Add to feed

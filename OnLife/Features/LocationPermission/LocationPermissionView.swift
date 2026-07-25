@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct LocationPermissionView: View {
-    @State private var store = LocationPermissionStore()
+    @State private var store = LocationPermissionStore.shared
     @Environment(\.dismiss) private var dismiss
     
     let onComplete: () -> Void

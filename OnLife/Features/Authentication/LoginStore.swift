@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AuthenticationServices
+import FirebaseAuth
 
 @Observable
 @MainActor
@@ -19,10 +20,12 @@ final class LoginStore {
     
     // MARK: - Dependencies
     
-    private var authState: AuthenticationState?
+    private let authService: any AuthServiceProtocol
     
-    func configure(authState: AuthenticationState) {
-        self.authState = authState
+    // MARK: - Initialization
+    
+    init(authService: any AuthServiceProtocol = AuthService.shared) {
+        self.authService = authService
     }
     
     // MARK: - Authentication Methods
@@ -48,9 +51,38 @@ final class LoginStore {
         defer { isLoading = false }
         
         do {
-            // TODO: Replace with actual backend authentication
-            try await authenticateWithBackend(email: email, password: password)
-            authState?.login()
+            // Use Firebase Auth via AuthService
+            try await authService.signIn(email: email, password: password)
+            print("✅ Login successful for: \(email)")
+        } catch {
+            showErrorMessage(error.localizedDescription)
+        }
+    }
+    
+    /// Create new account with email and password
+    func createAccount(email: String, password: String) async {
+        guard !email.isEmpty, !password.isEmpty else {
+            showErrorMessage("Please enter both email and password")
+            return
+        }
+        
+        guard isValidEmail(email) else {
+            showErrorMessage("Please enter a valid email address")
+            return
+        }
+        
+        guard password.count >= 6 else {
+            showErrorMessage("Password must be at least 6 characters")
+            return
+        }
+        
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            // Use Firebase Auth via AuthService
+            try await authService.createAccount(email: email, password: password)
+            print("✅ Account created for: \(email)")
         } catch {
             showErrorMessage(error.localizedDescription)
         }
@@ -73,9 +105,9 @@ final class LoginStore {
             defer { isLoading = false }
             
             do {
-                // TODO: Send credential to backend for verification
-                try await authenticateWithApple(credential: credential)
-                authState?.login()
+                // Use Firebase Auth via AuthService
+                try await authService.signInWithApple(credential: credential)
+                print("✅ Apple Sign In successful")
             } catch {
                 showErrorMessage("Apple Sign In failed: \(error.localizedDescription)")
             }
@@ -97,69 +129,12 @@ final class LoginStore {
         defer { isLoading = false }
         
         do {
-            // TODO: Implement Google Sign In
-            // This will require adding Google Sign-In SDK
-            // For now, show a placeholder message
-            try await Task.sleep(for: .seconds(1))
-            showErrorMessage("Google Sign In coming soon")
+            // Use Firebase Auth via AuthService
+            try await authService.signInWithGoogle()
+            print("✅ Google Sign In successful")
         } catch {
             showErrorMessage("Google Sign In failed: \(error.localizedDescription)")
         }
-    }
-    
-    // MARK: - Backend Communication (Placeholder)
-    
-    private func authenticateWithBackend(email: String, password: String) async throws {
-        // TODO: Replace with actual API call
-        // This is a placeholder that simulates a network request
-        
-        try await Task.sleep(for: .seconds(1.5))
-        
-        // Simulate authentication
-        // In production, this would be an actual API call to your backend
-        // Example:
-        // let response = try await NetworkService.shared.login(email: email, password: password)
-        // if response.success {
-        //     // Store authentication token
-        //     // Update user session
-        // } else {
-        //     throw AuthenticationError.invalidCredentials
-        // }
-        
-        // For demo purposes, accept any valid email format
-        if email.contains("@") && password.count >= 6 {
-            // Success
-            print("✅ Login successful for: \(email)")
-        } else {
-            throw AuthenticationError.invalidCredentials
-        }
-    }
-    
-    private func authenticateWithApple(credential: ASAuthorizationAppleIDCredential) async throws {
-        // TODO: Send Apple credential to backend for verification
-        // This is a placeholder
-        
-        try await Task.sleep(for: .seconds(1))
-        
-        let userIdentifier = credential.user
-        let email = credential.email
-        let fullName = credential.fullName
-        
-        print("✅ Apple Sign In successful")
-        print("   User ID: \(userIdentifier)")
-        if let email = email {
-            print("   Email: \(email)")
-        }
-        if let fullName = fullName {
-            print("   Name: \(fullName.givenName ?? "") \(fullName.familyName ?? "")")
-        }
-        
-        // In production:
-        // let response = try await NetworkService.shared.authenticateWithApple(
-        //     userIdentifier: userIdentifier,
-        //     identityToken: credential.identityToken,
-        //     authorizationCode: credential.authorizationCode
-        // )
     }
     
     // MARK: - Validation Helpers
@@ -173,27 +148,5 @@ final class LoginStore {
     private func showErrorMessage(_ message: String) {
         errorMessage = message
         showError = true
-    }
-}
-
-// MARK: - Authentication Error
-
-enum AuthenticationError: LocalizedError {
-    case invalidCredentials
-    case networkError
-    case serverError
-    case unknown
-    
-    var errorDescription: String? {
-        switch self {
-        case .invalidCredentials:
-            return "Invalid email or password"
-        case .networkError:
-            return "Network connection failed"
-        case .serverError:
-            return "Server error. Please try again later"
-        case .unknown:
-            return "An unknown error occurred"
-        }
     }
 }

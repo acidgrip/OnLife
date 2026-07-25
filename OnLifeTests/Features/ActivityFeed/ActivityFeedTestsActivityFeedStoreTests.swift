@@ -15,7 +15,7 @@ struct ActivityFeedStoreTests {
     
     @Test("ActivityFeedStore initializes with default values")
     func testStoreInitialization() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         
         #expect(store.feedItems.isEmpty) // No data loaded yet
         #expect(store.isLoading == false)
@@ -31,7 +31,7 @@ struct ActivityFeedStoreTests {
     
     @Test("ActivityFeedStore loads mock data on initialization")
     func testStoreLoadsMockData() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         #expect(store.feedItems.count == 3)
@@ -63,7 +63,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Toggle online status changes state")
     func testToggleOnlineStatus() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         
         #expect(store.isOnline == false)
         
@@ -76,7 +76,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Load feed sets and clears loading state")
     func testLoadFeedLoadingState() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         
         #expect(store.isLoading == false)
         
@@ -92,7 +92,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Refresh feed reloads data")
     func testRefreshFeed() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         let initialCount = store.feedItems.count
         
@@ -104,7 +104,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Like post toggles like status")
     func testLikePost() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         guard case .post(let originalPost) = store.feedItems[0] else {
@@ -133,7 +133,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Like post with invalid ID does nothing")
     func testLikePostInvalidID() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         let originalCount = store.feedItems.count
         
@@ -151,7 +151,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Bookmark event toggles bookmark status")
     func testBookmarkEvent() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         guard case .event(let originalEvent) = store.feedItems[1] else {
@@ -173,7 +173,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Join event toggles join status and updates attendee count")
     func testJoinEvent() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         guard case .event(let originalEvent) = store.feedItems[1] else {
@@ -202,7 +202,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Apply filter updates selected filter")
     func testApplyFilter() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         
         #expect(store.selectedFilter == .all)
         
@@ -218,7 +218,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Multiple likes toggle correctly")
     func testMultipleLikeToggles() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         guard case .post(let post) = store.feedItems[0] else {
@@ -253,7 +253,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Multiple bookmark toggles work correctly")
     func testMultipleBookmarkToggles() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         guard case .event(let event) = store.feedItems[1] else {
@@ -286,7 +286,7 @@ struct ActivityFeedStoreTests {
     
     @Test("Feed items maintain order after updates")
     func testFeedItemsOrderMaintained() async {
-        let store = ActivityFeedStore(autoLoad: false)
+        let store = ActivityFeedStore(database: MockDatabaseService(), autoLoad: false)
         await store.loadFeed()
         
         let originalCount = store.feedItems.count

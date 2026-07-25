@@ -27,14 +27,14 @@ enum AuthTestUtilities {
     /// Ensures clean authentication state before tests
     @MainActor
     static func cleanAuthState() async {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
     }
     
     /// Signs in with a predictable test user
     @MainActor
     static func signInTestUser(userId: String = "test-user") async throws -> MockUser {
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         try await mockAuth.signInAnonymously()
         return MockUser(uid: userId)
@@ -199,7 +199,7 @@ enum AuthTestFixtures {
 @MainActor
 class AuthTestStateManager {
     
-    private let mockAuth = MockAuthService.shared
+    private let mockAuth = MockAuthService()
     
     /// Signs in and returns the user ID
     func signIn() async throws -> String {
@@ -263,47 +263,51 @@ struct TestUtilitiesExamples {
     }
     
     @Test("Using AuthAssertions")
+    @MainActor
     func testAuthAssertions() async throws {
-        await MainActor.run {
-            let mockAuth = MockAuthService.shared
-            
-            Task { @MainActor in
-                await AuthTestUtilities.cleanAuthState()
-                
-                // Assert not authenticated
-                AuthAssertions.assertNotAuthenticated(mockAuth)
-                
-                // Sign in
-                try await mockAuth.signInAnonymously()
-                
-                // Assert authenticated
-                AuthAssertions.assertAuthenticated(mockAuth)
-                
-                // Validate user ID
-                AuthAssertions.assertValidUserId(mockAuth.currentUserId)
-                
-                // Clean up
-                try mockAuth.signOut()
-            }
-        }
+        // Run directly on MainActor rather than wrapping in a detached
+        // `Task` inside `MainActor.run` - the previous version's inner
+        // `Task { @MainActor in ... }` was never awaited, so this test
+        // function could return (and be reported as passed) before its own
+        // assertions had even run, and any thrown error inside that Task
+        // was silently discarded instead of failing the test.
+        let mockAuth = MockAuthService()
+
+        await AuthTestUtilities.cleanAuthState()
+
+        // Assert not authenticated
+        AuthAssertions.assertNotAuthenticated(mockAuth)
+
+        // Sign in
+        try await mockAuth.signInAnonymously()
+
+        // Assert authenticated
+        AuthAssertions.assertAuthenticated(mockAuth)
+
+        // Validate user ID
+        AuthAssertions.assertValidUserId(mockAuth.currentUserId)
+
+        // Clean up
+        try mockAuth.signOut()
     }
-    
+
     @Test("Using AuthTestStateManager")
+    @MainActor
     func testAuthStateManager() async throws {
-        await MainActor.run {
-            let stateManager = AuthTestStateManager()
-            
-            Task { @MainActor in
-                // Perform operation with authenticated user
-                let result = try await stateManager.withAuthenticatedUser { userId in
-                    // Inside this block, user is authenticated
-                    return "Operation completed for \(userId)"
-                }
-                
-                // After block, user is automatically signed out
-                #expect(result.contains("Operation completed"))
-            }
+        // Run directly on MainActor - see `testAuthAssertions` above for why
+        // the previous detached-`Task`-inside-`MainActor.run` pattern was
+        // unsafe (assertions could run after the test already finished, and
+        // thrown errors were silently swallowed).
+        let stateManager = AuthTestStateManager()
+
+        // Perform operation with authenticated user
+        let result = try await stateManager.withAuthenticatedUser { userId in
+            // Inside this block, user is authenticated
+            return "Operation completed for \(userId)"
         }
+
+        // After block, user is automatically signed out
+        #expect(result.contains("Operation completed"))
     }
     
     @Test("Using test fixtures")
@@ -342,7 +346,7 @@ enum AuthPerformanceHelpers {
     static func measureSignIn() async throws -> TimeInterval {
         let start = Date()
         
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         mockAuth.reset()
         try await mockAuth.signInAnonymously()
         try mockAuth.signOut()
@@ -355,7 +359,7 @@ enum AuthPerformanceHelpers {
     static func measureMultipleAuthCycles(count: Int) async throws -> TimeInterval {
         let start = Date()
         
-        let mockAuth = MockAuthService.shared
+        let mockAuth = MockAuthService()
         
         for _ in 0..<count {
             mockAuth.reset()

@@ -1,8 +1,22 @@
+// This file is deprecated and replaced by AuthService.swift
+// AuthService now handles all authentication using Firebase Auth
+// 
+// To migrate:
+// - Replace AuthenticationState with AuthService
+// - Use AuthService.shared.isAuthenticated instead of isAuthenticated
+// - Use AuthService.shared.currentUserId instead of userId
+// - Use AuthService.shared.signOut() instead of logout()
+//
+// This file can be deleted once all references are removed.
+
+#if false
+
 //
 //  AuthenticationState.swift
 //  Onlife
 //
 //  Created by Daniel Lee on 6/13/26.
+//  DEPRECATED: Use AuthService instead
 //
 
 import Foundation
@@ -78,3 +92,5 @@ final class AuthenticationState {
         // KeychainHelper.delete(key: "authToken")
     }
 }
+
+#endif

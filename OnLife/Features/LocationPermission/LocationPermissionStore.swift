@@ -11,11 +11,22 @@ import Combine
 
 @MainActor
 final class LocationPermissionStore: NSObject, ObservableObject {
+    // MARK: - Shared Instance
+
+    /// App-wide instance, mirroring `AuthService.shared`. A single
+    /// `CLLocationManager` should own authorization/location state so that
+    /// permission granted in one place (e.g. onboarding) is visible
+    /// everywhere else that needs the current coordinate (e.g. the feed).
+    static let shared = LocationPermissionStore()
+
     // MARK: - Published Properties
     
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var hasRequestedPermission: Bool = false
     @Published var isLoading: Bool = false
+    /// The most recent location fix, published once authorization is granted
+    /// and `CLLocationManager` starts delivering updates. `nil` until then.
+    @Published var currentLocation: CLLocation?
     
     // MARK: - Private Properties
     
@@ -117,9 +128,21 @@ final class LocationPermissionStore: NSObject, ObservableObject {
 
 extension LocationPermissionStore: CLLocationManagerDelegate {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
         Task { @MainActor in
-            authorizationStatus = manager.authorizationStatus
+            authorizationStatus = status
             isLoading = false
+
+            if isAuthorized {
+                manager.startUpdatingLocation()
+            }
+        }
+    }
+
+    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let latest = locations.last else { return }
+        Task { @MainActor in
+            currentLocation = latest
         }
     }
 }

@@ -10,7 +10,7 @@ import Foundation
 /// Centralized database configuration for the app
 /// Use this to easily switch between database implementations
 enum DatabaseConfiguration {
-    
+
     /// The active configuration based on build environment
     static var current: DatabaseManager.Configuration {
         #if DEBUG
@@ -19,21 +19,24 @@ enum DatabaseConfiguration {
         return production
         #endif
     }
-    
+
     /// Development configuration (you can switch between .mock and .firebase)
     private static var development: DatabaseManager.Configuration {
-        // Using mock database for faster development without network calls
-        .mock(simulatedDelay: 0.0)  // No delay = instant responses
-        
-        // Uncomment the line below to use Firebase in development
-        // .firebase
+        // Using real Firebase in development so Debug builds (the way this
+        // app is tested from Xcode) actually persist sign-up/auth data
+        // instead of silently writing to an in-memory mock.
+        .firebase
+
+        // Uncomment the line below to go back to the mock for faster
+        // iteration without network calls / real Firebase writes.
+        // .mock(simulatedDelay: 0.0)
     }
-    
+
     /// Production configuration (Firebase)
     private static var production: DatabaseManager.Configuration {
         .firebase // Using Firebase in production
     }
-    
+
     /// Testing configuration (no delay)
     static var testing: DatabaseManager.Configuration {
         .mock(simulatedDelay: 0)
@@ -44,7 +47,7 @@ enum DatabaseConfiguration {
 
 /// Configuration values that change based on environment
 struct EnvironmentConfig {
-    
+
     /// Whether to use real-time database listeners
     static var useRealtimeUpdates: Bool {
         #if DEBUG
@@ -53,7 +56,7 @@ struct EnvironmentConfig {
         return true  // Enable in production
         #endif
     }
-    
+
     /// Maximum number of feed items to fetch at once
     static var feedPageSize: Int {
         #if DEBUG
@@ -62,7 +65,7 @@ struct EnvironmentConfig {
         return 50 // Larger pages for production
         #endif
     }
-    
+
     /// Whether to enable verbose logging
     static var enableVerboseLogging: Bool {
         #if DEBUG
@@ -71,12 +74,12 @@ struct EnvironmentConfig {
         return false
         #endif
     }
-    
+
     /// Maximum image upload size (in bytes)
     static var maxImageSize: Int {
         5 * 1024 * 1024 // 5MB
     }
-    
+
     /// Image compression quality (0.0 to 1.0)
     static var imageCompressionQuality: Double {
         0.8
@@ -87,27 +90,27 @@ struct EnvironmentConfig {
 
 /// Feature flags for gradual rollout of new features
 struct FeatureFlags {
-    
+
     /// Enable real-time feed updates
     static var realtimeFeed: Bool {
         EnvironmentConfig.useRealtimeUpdates
     }
-    
+
     /// Enable location-based event discovery
     static var nearbyEvents: Bool {
         true
     }
-    
+
     /// Enable image uploads
     static var imageUpload: Bool {
         true
     }
-    
+
     /// Enable comments on posts
     static var comments: Bool {
         true
     }
-    
+
     /// Enable push notifications
     static var pushNotifications: Bool {
         #if DEBUG
@@ -116,7 +119,7 @@ struct FeatureFlags {
         return true
         #endif
     }
-    
+
     /// Enable analytics tracking
     static var analytics: Bool {
         #if DEBUG
@@ -130,12 +133,12 @@ struct FeatureFlags {
 // MARK: - App Initialization Helper
 
 extension DatabaseManager {
-    
+
     /// Configures the database with the appropriate implementation
     /// Call this in your app's init() method
     static func configureForEnvironment() {
         shared.configure(with: DatabaseConfiguration.current)
-        
+
         if EnvironmentConfig.enableVerboseLogging {
             print("🗄️ Database configured with: \(DatabaseConfiguration.current)")
             print("📊 Feature Flags:")

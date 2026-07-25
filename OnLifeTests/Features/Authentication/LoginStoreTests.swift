@@ -16,7 +16,9 @@ struct LoginStoreTests {
     
     @Test("Valid email addresses pass validation")
     func validEmailValidation() {
-        let store = LoginStore()
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         #expect(store.isValidEmail("test@example.com") == true)
         #expect(store.isValidEmail("user.name@domain.co.uk") == true)
@@ -25,7 +27,9 @@ struct LoginStoreTests {
     
     @Test("Invalid email addresses fail validation")
     func invalidEmailValidation() {
-        let store = LoginStore()
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         #expect(store.isValidEmail("notanemail") == false)
         #expect(store.isValidEmail("missing@domain") == false)
@@ -38,95 +42,102 @@ struct LoginStoreTests {
     
     @Test("Login with empty email shows error")
     func loginWithEmptyEmail() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: "", password: "password123")
         
         #expect(store.showError == true)
         #expect(store.errorMessage == "Please enter both email and password")
-        #expect(authState.isAuthenticated == false)
+        #expect(mockAuth.isAuthenticated == false)
     }
     
     @Test("Login with empty password shows error")
     func loginWithEmptyPassword() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: "test@example.com", password: "")
         
         #expect(store.showError == true)
         #expect(store.errorMessage == "Please enter both email and password")
-        #expect(authState.isAuthenticated == false)
+        #expect(mockAuth.isAuthenticated == false)
     }
     
     @Test("Login with invalid email format shows error")
     func loginWithInvalidEmailFormat() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: "notanemail", password: "password123")
         
         #expect(store.showError == true)
         #expect(store.errorMessage == "Please enter a valid email address")
-        #expect(authState.isAuthenticated == false)
+        #expect(mockAuth.isAuthenticated == false)
     }
     
     @Test("Login with short password shows error")
     func loginWithShortPassword() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: "test@example.com", password: "12345")
         
         #expect(store.showError == true)
         #expect(store.errorMessage == "Password must be at least 6 characters")
-        #expect(authState.isAuthenticated == false)
+        #expect(mockAuth.isAuthenticated == false)
     }
     
     @Test("Login with valid credentials succeeds")
     func loginWithValidCredentials() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: "test@example.com", password: "password123")
         
         #expect(store.isLoading == false)
         #expect(store.showError == false)
-        #expect(authState.isAuthenticated == true)
+        #expect(mockAuth.isAuthenticated == true)
     }
     
     // MARK: - Loading State Tests
     
     @Test("Loading state is true during login")
     func loadingStateDuringLogin() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
-        
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
+
         // Start login in background
-        Task {
+        let loginTask = Task {
             await store.login(email: "test@example.com", password: "password123")
         }
-        
+
         // Small delay to allow login to start
-        try? await Task.sleep(for: .milliseconds(100))
-        
+        try? await Task.sleep(for: .milliseconds(50))
+
         // Loading should be true while processing
         // Note: This test is timing-dependent and may be flaky
         // In production, you'd mock the network call to control timing
+        #expect(store.isLoading == true)
+
+        // Wait for the login to actually finish before the test function
+        // returns, so the background Task doesn't keep running/mutating
+        // `store`/`mockAuth` after this test has already been reported done.
+        await loginTask.value
+        #expect(store.isLoading == false)
     }
     
     @Test("Loading state is false after login completes")
     func loadingStateAfterLogin() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: "test@example.com", password: "password123")
         
@@ -137,9 +148,9 @@ struct LoginStoreTests {
     
     @Test("Error state is cleared on new login attempt")
     func errorStateClearedOnNewAttempt() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         // First attempt with invalid data
         await store.login(email: "", password: "")
@@ -158,21 +169,21 @@ struct LoginStoreTests {
     
     @Test("Login with minimum valid password length")
     func loginWithMinimumPasswordLength() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: "test@example.com", password: "123456")
         
         #expect(store.showError == false)
-        #expect(authState.isAuthenticated == true)
+        #expect(mockAuth.isAuthenticated == true)
     }
     
     @Test("Login with whitespace in email")
     func loginWithWhitespaceEmail() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.login(email: " test@example.com ", password: "password123")
         
@@ -183,7 +194,9 @@ struct LoginStoreTests {
     
     @Test("Email validation with special characters")
     func emailValidationWithSpecialCharacters() {
-        let store = LoginStore()
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         #expect(store.isValidEmail("user+tag@example.com") == true)
         #expect(store.isValidEmail("first.last@example.com") == true)
@@ -192,84 +205,107 @@ struct LoginStoreTests {
     
     // MARK: - Google Sign In Tests
     
-    @Test("Google sign in shows coming soon message")
-    func googleSignInShowsComingSoon() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+    @Test("Google sign in attempts authentication")
+    func googleSignInAttemptsAuthentication() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
         await store.signInWithGoogle()
         
-        #expect(store.showError == true)
-        #expect(store.errorMessage == "Google Sign In coming soon")
-        #expect(authState.isAuthenticated == false)
+        // With mock auth service, Google sign in should succeed
+        #expect(store.isLoading == false)
+        #expect(mockAuth.isAuthenticated == true)
     }
     
-    @Test("Google sign in sets loading state correctly")
-    func googleSignInLoadingState() async {
-        let store = LoginStore()
-        let authState = AuthenticationState()
-        store.configure(authState: authState)
+    @Test("Google sign in handles failure gracefully")
+    func googleSignInHandlesFailure() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        mockAuth.shouldFailSignIn = true
+        let store = LoginStore(authService: mockAuth)
         
         await store.signInWithGoogle()
         
         #expect(store.isLoading == false)
+        #expect(store.showError == true)
+        #expect(mockAuth.isAuthenticated == false)
+        
+        // Clean up
+        mockAuth.reset()
     }
 }
 
-// MARK: - Authentication State Tests
+// MARK: - Account Creation Tests
 
-@Suite("Authentication State Tests")
+@Suite("Account Creation Tests")
 @MainActor
-struct AuthenticationStateTests {
+struct AccountCreationTests {
     
-    @Test("Initial state is not authenticated")
-    func initialState() {
-        let authState = AuthenticationState()
+    @Test("Create account with valid credentials succeeds")
+    func createAccountWithValidCredentials() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
-        #expect(authState.isAuthenticated == false)
+        await store.createAccount(email: "newuser@example.com", password: "password123")
+        
+        #expect(store.showError == false)
+        #expect(mockAuth.isAuthenticated == true)
     }
     
-    @Test("Login sets authenticated to true")
-    func loginSetsAuthenticated() {
-        let authState = AuthenticationState()
+    @Test("Create account with empty email shows error")
+    func createAccountWithEmptyEmail() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
-        authState.login()
+        await store.createAccount(email: "", password: "password123")
         
-        #expect(authState.isAuthenticated == true)
+        #expect(store.showError == true)
+        #expect(store.errorMessage == "Please enter both email and password")
+        #expect(mockAuth.isAuthenticated == false)
     }
     
-    @Test("Logout sets authenticated to false")
-    func logoutSetsUnauthenticated() {
-        let authState = AuthenticationState()
+    @Test("Create account with invalid email shows error")
+    func createAccountWithInvalidEmail() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
-        authState.login()
-        #expect(authState.isAuthenticated == true)
+        await store.createAccount(email: "notanemail", password: "password123")
         
-        authState.logout()
-        #expect(authState.isAuthenticated == false)
+        #expect(store.showError == true)
+        #expect(store.errorMessage == "Please enter a valid email address")
+        #expect(mockAuth.isAuthenticated == false)
     }
     
-    @Test("Multiple login calls remain authenticated")
-    func multipleLoginCalls() {
-        let authState = AuthenticationState()
+    @Test("Create account with short password shows error")
+    func createAccountWithShortPassword() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = LoginStore(authService: mockAuth)
         
-        authState.login()
-        authState.login()
-        authState.login()
+        await store.createAccount(email: "newuser@example.com", password: "12345")
         
-        #expect(authState.isAuthenticated == true)
+        #expect(store.showError == true)
+        #expect(store.errorMessage == "Password must be at least 6 characters")
+        #expect(mockAuth.isAuthenticated == false)
     }
     
-    @Test("Multiple logout calls remain unauthenticated")
-    func multipleLogoutCalls() {
-        let authState = AuthenticationState()
+    @Test("Create account handles failure gracefully")
+    func createAccountHandlesFailure() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        mockAuth.shouldFailSignIn = true
+        let store = LoginStore(authService: mockAuth)
         
-        authState.login()
-        authState.logout()
-        authState.logout()
-        authState.logout()
+        await store.createAccount(email: "newuser@example.com", password: "password123")
         
-        #expect(authState.isAuthenticated == false)
+        #expect(store.showError == true)
+        #expect(mockAuth.isAuthenticated == false)
+        
+        // Clean up
+        mockAuth.reset()
     }
 }

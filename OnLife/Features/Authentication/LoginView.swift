@@ -18,10 +18,18 @@ struct LoginView: View {
     @State private var password = ""
     @State private var showPassword = false
     @State private var showForgotPassword = false
+    @State private var showAppleComingSoonAlert = false
+    @State private var showGoogleComingSoonAlert = false
+    @State private var navigateToSignUp = false
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(AuthenticationState.self) private var authState
-    
+
     var body: some View {
+        // The app's only NavigationStack - every downstream onboarding
+        // screen (SignUpView -> VerificationCodeView -> ... ->
+        // LocationPermissionView) composes its own .navigationDestination
+        // onto this single stack, so wrapping it here is enough to make
+        // the entire wizard's navigation functional.
+        NavigationStack {
         ZStack {
             // Background
             Color.black
@@ -70,14 +78,25 @@ struct LoginView: View {
                 Text(errorMessage)
             }
         }
-        .onAppear {
-            store.configure(authState: authState)
-        }
         .sheet(isPresented: $showForgotPassword) {
             ForgotPasswordView()
         }
+        .alert("Sign in with Apple", isPresented: $showAppleComingSoonAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Sign in with Apple is coming soon. Use email and password to log in for now.")
+        }
+        .alert("Sign in with Google", isPresented: $showGoogleComingSoonAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Sign in with Google is coming soon. Use email and password to log in for now.")
+        }
+        .navigationDestination(isPresented: $navigateToSignUp) {
+            SignUpView()
+        }
+        }
     }
-    
+
     // MARK: - Logo Section
     
     private var logoSection: some View {
@@ -114,23 +133,39 @@ struct LoginView: View {
         }
     }
     
+    // Real Apple Sign In (AuthService.signInWithApple / LoginStore.handleAppleSignInRequest(_:)
+    // / handleAppleSignInCompletion(_:)) is already implemented but not wired up here yet -
+    // tapping this button just acknowledges the tap until that's ready to turn on.
     private var appleSignInButton: some View {
-        SignInWithAppleButton { request in
-            store.handleAppleSignInRequest(request)
-        } onCompletion: { result in
-            Task {
-                await store.handleAppleSignInCompletion(result)
+        Button {
+            showAppleComingSoonAlert = true
+        } label: {
+            HStack(spacing: Spacing.small) {
+                Image(systemName: "apple.logo")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(.white)
+
+                Text("Sign in with Apple")
+                    .font(.headline)
+                    .foregroundColor(.white)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(Color.white.opacity(0.1))
+            .cornerRadius(12)
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
             }
         }
-        .frame(height: 56)
-        .cornerRadius(12)
     }
-    
+
+    // Real Google Sign In (AuthService.signInWithGoogle / LoginStore.signInWithGoogle) is
+    // already implemented but not wired up here yet - tapping this button just acknowledges
+    // the tap until that's ready to turn on.
     private var googleSignInButton: some View {
         Button {
-            Task {
-                await store.signInWithGoogle()
-            }
+            showGoogleComingSoonAlert = true
         } label: {
             HStack(spacing: Spacing.small) {
                 // Google Icon Placeholder
@@ -178,6 +213,10 @@ struct LoginView: View {
                     TextField("name@example.com", text: $email)
                         .foregroundColor(.white)
                         .tint(Color(red: 1.0, green: 0.5, blue: 0.35))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
                 }
                 .padding(.horizontal, Spacing.medium)
                 .padding(.vertical, Spacing.medium)
@@ -210,6 +249,9 @@ struct LoginView: View {
                     }
                     .foregroundColor(.white)
                     .tint(Color(red: 1.0, green: 0.5, blue: 0.35))
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textContentType(.password)
                     
                     Button {
                         showPassword.toggle()
@@ -287,8 +329,7 @@ struct LoginView: View {
                 .foregroundColor(.gray)
             
             Button {
-                // TODO: Navigate to Sign Up screen
-                print("Sign up tapped")
+                navigateToSignUp = true
             } label: {
                 Text("Sign up")
                     .fontWeight(.semibold)
@@ -315,5 +356,4 @@ struct LoginView: View {
 
 #Preview {
     LoginView()
-        .environment(AuthenticationState())
 }

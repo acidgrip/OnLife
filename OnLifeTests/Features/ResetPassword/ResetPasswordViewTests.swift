@@ -10,6 +10,7 @@ import SwiftUI
 @testable import OnLife
 
 @Suite("Reset Password View Tests")
+@MainActor
 struct ResetPasswordViewTests {
     
     // MARK: - View Initialization Tests

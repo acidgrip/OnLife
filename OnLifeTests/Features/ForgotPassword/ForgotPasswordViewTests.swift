@@ -124,6 +124,7 @@ struct ForgotPasswordAlertTests {
 // MARK: - Navigation Tests
 
 @Suite("Forgot Password Navigation Tests")
+@MainActor
 struct ForgotPasswordNavigationTests {
     
     @Test("View has dismiss environment variable")
