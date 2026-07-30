@@ -94,7 +94,7 @@ final class AuthService: AuthServiceProtocol {
             throw AuthError.firebaseNotConfigured
         }
 
-        let result = try await Auth.auth().signIn(withEmail: email, password: password)
+        let result = try await Auth.auth().signIn(withEmail: email.normalizedEmail, password: password)
         currentUser = result.user
     }
 
@@ -104,7 +104,7 @@ final class AuthService: AuthServiceProtocol {
             throw AuthError.firebaseNotConfigured
         }
 
-        let result = try await Auth.auth().createUser(withEmail: email, password: password)
+        let result = try await Auth.auth().createUser(withEmail: email.normalizedEmail, password: password)
         currentUser = result.user
     }
 
@@ -162,7 +162,7 @@ final class AuthService: AuthServiceProtocol {
             throw AuthError.invalidCredential
         }
 
-        let credential = EmailAuthProvider.credential(withEmail: email, password: password)
+        let credential = EmailAuthProvider.credential(withEmail: email.normalizedEmail, password: password)
         let result = try await user.link(with: credential)
         currentUser = result.user
     }

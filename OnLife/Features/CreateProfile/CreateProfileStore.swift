@@ -175,7 +175,12 @@ final class CreateProfileStore {
         defer { isLoading = false }
 
         do {
-            try await authService.linkEmailPassword(email: email, password: password)
+            // Normalize once so the credential Firebase Auth links and the
+            // email we persist to the Firestore profile always agree -
+            // Firebase itself stores/matches account emails lowercased, so
+            // this also keeps sign-in case-insensitive end to end.
+            let normalizedEmail = email.normalizedEmail
+            try await authService.linkEmailPassword(email: normalizedEmail, password: password)
 
             guard let uid = authService.currentUserId else {
                 throw AuthError.invalidCredential
@@ -184,7 +189,7 @@ final class CreateProfileStore {
             let profile = UserProfile(
                 id: uid,
                 phoneNumber: session.phoneNumber,
-                email: email,
+                email: normalizedEmail,
                 username: username,
                 name: name,
                 bio: bio,

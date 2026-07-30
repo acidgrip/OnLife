@@ -173,6 +173,32 @@ struct CreateProfileStoreTests {
         mockAuth.reset()
     }
 
+    @Test("Create profile normalizes a mixed-case email before linking, so sign-in is case-insensitive")
+    @MainActor
+    func testCreateProfileNormalizesEmailCase() async throws {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        try await mockAuth.verifyPhoneCode(verificationID: "any-id", code: "123456")
+
+        let session = SignUpSession()
+        session.phoneNumber = "+15551234567"
+        session.dateOfBirth = Date(timeIntervalSince1970: 0)
+        session.profilePhotoURL = "https://mock-storage.example.com/users/1/profile.jpg"
+
+        let store = CreateProfileStore(session: session, database: MockDatabaseService(), authService: mockAuth)
+        store.updateUsername("jane_doe")
+        store.updateName("Jane Doe")
+        store.email = "JaNe@ExAmPlE.CoM"
+        store.password = "password123"
+
+        await store.createProfile()
+
+        #expect(!store.showError)
+        #expect(store.showSuccess)
+        #expect(mockAuth.lastLinkedEmail == "jane@example.com", "The credential linked with Firebase Auth should be normalized")
+        mockAuth.reset()
+    }
+
     @Test("Create profile fails when the form is invalid")
     @MainActor
     func testCreateProfileFailsInvalidForm() async {
