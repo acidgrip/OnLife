@@ -45,4 +45,23 @@ struct SignUpViewTests {
         let view = SignUpView()
         _ = view.body
     }
+
+    @Test("View owns navigation state for the DEBUG-only skip-verification path")
+    @MainActor
+    func testViewOwnsSkipVerificationNavigationState() async {
+        // See SignUpStore.skipPhoneVerification for why this state/button
+        // exists - it's a temporary testing affordance for developing
+        // without Firebase's Blaze billing plan enabled, wrapped in
+        // #if DEBUG so it's excluded from Release builds.
+        let view = SignUpView()
+        let mirror = Mirror(reflecting: view)
+
+        let hasNavigateToBirthdaySkippingVerification = mirror.children.contains {
+            $0.label == "_navigateToBirthdaySkippingVerification"
+        }
+        #expect(
+            hasNavigateToBirthdaySkippingVerification,
+            "View should own navigation state for skipping straight to VerificationBirthdayView"
+        )
+    }
 }

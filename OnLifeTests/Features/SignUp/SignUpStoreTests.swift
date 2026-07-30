@@ -210,4 +210,54 @@ struct SignUpStoreTests {
         #expect(session.verificationID == "abc-123")
         mockAuth.reset()
     }
+
+    // MARK: - Skip Phone Verification Tests
+    // (temporary testing affordance - see SignUpStore.skipPhoneVerification)
+
+    @Test("Skip phone verification signs in anonymously and signals success")
+    @MainActor
+    func testSkipPhoneVerificationSucceeds() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = SignUpStore(authService: mockAuth)
+        let session = SignUpSession()
+
+        await store.skipPhoneVerification(session: session)
+
+        #expect(!store.showError)
+        #expect(store.showSkipSuccess)
+        #expect(mockAuth.isAuthenticated)
+        mockAuth.reset()
+    }
+
+    @Test("isLoading is false after skip phone verification succeeds")
+    @MainActor
+    func testLoadingStateFalseAfterSkipSuccess() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        let store = SignUpStore(authService: mockAuth)
+        let session = SignUpSession()
+
+        await store.skipPhoneVerification(session: session)
+
+        #expect(!store.isLoading)
+        mockAuth.reset()
+    }
+
+    @Test("Skip phone verification surfaces backend failure")
+    @MainActor
+    func testSkipPhoneVerificationFailure() async {
+        let mockAuth = MockAuthService()
+        mockAuth.reset()
+        mockAuth.shouldFailSignIn = true
+        let store = SignUpStore(authService: mockAuth)
+        let session = SignUpSession()
+
+        await store.skipPhoneVerification(session: session)
+
+        #expect(store.showError)
+        #expect(!store.showSkipSuccess)
+        #expect(!store.isLoading)
+        mockAuth.reset()
+    }
 }

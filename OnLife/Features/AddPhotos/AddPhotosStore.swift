@@ -218,6 +218,18 @@ final class AddPhotosStore {
         }
     }
 
+    /// Skips real photo upload for developing/testing without a device photo
+    /// library (e.g. the Simulator's Photos app is often empty, or picking
+    /// photos there doesn't work as expected). Bypasses Firebase Storage
+    /// entirely and leaves `session`'s photo URL fields unset, then signals
+    /// success exactly like `uploadPhotos()` so the wizard still proceeds to
+    /// `CreateProfileView`. This is a **temporary testing affordance** - the
+    /// button that calls this in `AddPhotosView` is wrapped in `#if DEBUG`
+    /// so it never ships in a Release build.
+    func skipPhotoUpload() {
+        showSuccess = true
+    }
+
     // MARK: - Helpers
 
     private func showErrorMessage(_ message: String) {

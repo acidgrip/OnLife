@@ -17,6 +17,12 @@ final class SignUpStore {
     var showSuccess = false
     var errorMessage: String?
 
+    /// Set when "Skip phone verification" (a temporary testing affordance -
+    /// see `skipPhoneVerification(session:)` below) succeeds. Kept separate
+    /// from `showSuccess` (the real "verification code sent" signal) so
+    /// `SignUpView` can route each one to a different next screen.
+    var showSkipSuccess = false
+
     // MARK: - Dependencies
 
     private let authService: any AuthServiceProtocol
@@ -54,6 +60,29 @@ final class SignUpStore {
             session.verificationID = verificationID
             showSuccess = true
         } catch {
+            error.printDebugDetails(context: "SignUpStore.sendVerificationCode")
+            showErrorMessage(error.localizedDescription)
+        }
+    }
+
+    /// Skips real phone verification by signing in anonymously instead, so
+    /// the rest of the wizard (birthday/photos/profile, which needs a
+    /// signed-in user to attach an email/password credential to) still
+    /// works without it. This is a **temporary testing affordance** for
+    /// developing without Firebase's Blaze billing plan enabled (Phone Auth
+    /// requires it; Anonymous Auth doesn't) - the button that calls this in
+    /// `SignUpView` is wrapped in `#if DEBUG` so it never ships in a
+    /// Release build. Once Blaze is turned on for real phone verification,
+    /// this method (and its button) can be removed.
+    func skipPhoneVerification(session: SignUpSession) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            try await authService.signInAnonymously()
+            showSkipSuccess = true
+        } catch {
+            error.printDebugDetails(context: "SignUpStore.skipPhoneVerification")
             showErrorMessage(error.localizedDescription)
         }
     }

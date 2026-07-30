@@ -164,6 +164,47 @@ struct AddPhotosStoreTests {
         mockAuth.reset()
     }
 
+    // MARK: - Skip Photo Upload Tests
+    // (temporary testing affordance - see AddPhotosStore.skipPhotoUpload)
+
+    @Test("Skip photo upload signals success without touching Storage")
+    @MainActor
+    func testSkipPhotoUploadSignalsSuccess() async {
+        let session = SignUpSession()
+        let store = AddPhotosStore(session: session, database: MockDatabaseService())
+
+        store.skipPhotoUpload()
+
+        #expect(!store.showError)
+        #expect(store.showSuccess)
+    }
+
+    @Test("Skip photo upload leaves session photo URLs unset")
+    @MainActor
+    func testSkipPhotoUploadLeavesSessionURLsUnset() async {
+        let session = SignUpSession()
+        let store = AddPhotosStore(session: session, database: MockDatabaseService())
+
+        store.skipPhotoUpload()
+
+        #expect(session.profilePhotoURL == nil)
+        #expect(session.publicPhotoURL == nil)
+        #expect(session.privatePhotoURLs.isEmpty)
+    }
+
+    @Test("Skip photo upload works even without a profile photo selected")
+    @MainActor
+    func testSkipPhotoUploadWorksWithoutProfilePhoto() async {
+        let session = SignUpSession()
+        let store = AddPhotosStore(session: session, database: MockDatabaseService())
+
+        #expect(!store.hasMinimumPhotos)
+
+        store.skipPhotoUpload()
+
+        #expect(store.showSuccess)
+    }
+
     // MARK: - Reset Tests
 
     @Test("Reset clears all photo and status state")

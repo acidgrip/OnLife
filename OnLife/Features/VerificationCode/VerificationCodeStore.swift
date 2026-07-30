@@ -70,6 +70,7 @@ final class VerificationCodeStore {
             try await authService.verifyPhoneCode(verificationID: verificationID, code: code)
             showSuccess = true
         } catch {
+            error.printDebugDetails(context: "VerificationCodeStore.verifyCode")
             showErrorMessage(error.localizedDescription)
         }
     }
@@ -94,6 +95,7 @@ final class VerificationCodeStore {
             verificationCode = Array(repeating: "", count: 6)
 
         } catch {
+            error.printDebugDetails(context: "VerificationCodeStore.resendCode")
             showErrorMessage(error.localizedDescription)
         }
     }

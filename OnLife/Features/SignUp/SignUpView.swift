@@ -12,6 +12,7 @@ struct SignUpView: View {
     @State private var session = SignUpSession()
     @State private var phoneNumber = ""
     @State private var navigateToVerification = false
+    @State private var navigateToBirthdaySkippingVerification = false
     @Environment(\.dismiss) private var dismiss
 
     // MARK: - Gradient Definitions
@@ -53,6 +54,13 @@ struct SignUpView: View {
                     // Send Verification Code Button
                     sendVerificationButton
 
+                    #if DEBUG
+                    // Temporary testing affordance - see
+                    // SignUpStore.skipPhoneVerification for why this exists
+                    // and is DEBUG-only.
+                    skipVerificationButton
+                    #endif
+
                     Spacer()
 
                     // Login Link
@@ -70,9 +78,17 @@ struct SignUpView: View {
         .navigationDestination(isPresented: $navigateToVerification) {
             VerificationCodeView(session: session)
         }
+        .navigationDestination(isPresented: $navigateToBirthdaySkippingVerification) {
+            VerificationBirthdayView(session: session)
+        }
         .onChange(of: store.showSuccess) { oldValue, newValue in
             if newValue {
                 navigateToVerification = true
+            }
+        }
+        .onChange(of: store.showSkipSuccess) { oldValue, newValue in
+            if newValue {
+                navigateToBirthdaySkippingVerification = true
             }
         }
         .alert("Error", isPresented: $store.showError) {
@@ -200,6 +216,26 @@ struct SignUpView: View {
         .foregroundColor(.black)
         .cornerRadius(28)
     }
+
+    // MARK: - Skip Verification Button (DEBUG-only testing affordance)
+
+    #if DEBUG
+    private var skipVerificationButton: some View {
+        Button {
+            Task {
+                await store.skipPhoneVerification(session: session)
+            }
+        } label: {
+            Text("Skip phone verification (testing only)")
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundColor(.gray)
+                .underline()
+        }
+        .disabled(store.isLoading)
+        .padding(.top, Spacing.extraSmall)
+    }
+    #endif
 
     // MARK: - Login Link
 

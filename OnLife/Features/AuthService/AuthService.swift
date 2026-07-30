@@ -43,6 +43,15 @@ protocol AuthServiceProtocol {
     /// user (e.g. one authenticated via phone during sign-up), so they can
     /// later sign in with `signIn(email:password:)` as well.
     func linkEmailPassword(email: String, password: String) async throws
+
+    /// Signs in with an anonymous Firebase Auth account - unlike Phone Auth,
+    /// this doesn't require the Firebase project to be on the Blaze billing
+    /// plan. Used as a stand-in identity for the sign-up wizard's "Skip
+    /// phone verification" testing affordance (see `SignUpStore`), so the
+    /// rest of the wizard (which needs a signed-in user to link an
+    /// email/password credential onto) still works before phone
+    /// verification is turned back on.
+    func signInAnonymously() async throws
 }
 
 /// Manages user authentication state using Firebase Auth
@@ -269,13 +278,18 @@ final class AuthService: AuthServiceProtocol {
 
     // MARK: - Anonymous Sign In
 
-    /// Sign in anonymously for testing
+    /// Signs in anonymously. Also marks `isOnboarding = true`, matching
+    /// `verifyPhoneCode` above, since this method's other real caller is
+    /// `SignUpStore`'s "Skip phone verification" testing path through the
+    /// sign-up wizard (this method is never called for a returning user's
+    /// sign-in).
     func signInAnonymously() async throws {
         guard FirebaseApp.app() != nil else {
             throw AuthError.firebaseNotConfigured
         }
         let result = try await Auth.auth().signInAnonymously()
         currentUser = result.user
+        isOnboarding = true
     }
 
     // MARK: - Sign Out

@@ -54,6 +54,13 @@ struct AddPhotosView: View {
 
                     // Upload Button
                     uploadButton
+
+                    #if DEBUG
+                    // Temporary testing affordance - see
+                    // AddPhotosStore.skipPhotoUpload for why this exists
+                    // and is DEBUG-only.
+                    skipPhotoUploadButton
+                    #endif
                 }
                 .padding(.horizontal, Spacing.large)
                 .padding(.top, Spacing.small)
@@ -354,6 +361,24 @@ struct AddPhotosView: View {
         .foregroundColor(.black)
         .cornerRadius(25)
     }
+
+    // MARK: - Skip Photo Upload Button (DEBUG-only testing affordance)
+
+    #if DEBUG
+    private var skipPhotoUploadButton: some View {
+        Button {
+            store.skipPhotoUpload()
+        } label: {
+            Text("Skip photo upload (testing only)")
+                .font(.footnote)
+                .fontWeight(.medium)
+                .foregroundColor(.gray)
+                .underline()
+        }
+        .disabled(store.isLoading)
+        .padding(.top, Spacing.extraSmall)
+    }
+    #endif
 
     // MARK: - Progress Indicator
 

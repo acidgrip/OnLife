@@ -55,6 +55,7 @@ final class LoginStore {
             try await authService.signIn(email: email, password: password)
             print("✅ Login successful for: \(email)")
         } catch {
+            error.printDebugDetails(context: "LoginStore.login")
             showErrorMessage(error.localizedDescription)
         }
     }
@@ -84,6 +85,7 @@ final class LoginStore {
             try await authService.createAccount(email: email, password: password)
             print("✅ Account created for: \(email)")
         } catch {
+            error.printDebugDetails(context: "LoginStore.createAccount")
             showErrorMessage(error.localizedDescription)
         }
     }
@@ -109,6 +111,7 @@ final class LoginStore {
                 try await authService.signInWithApple(credential: credential)
                 print("✅ Apple Sign In successful")
             } catch {
+                error.printDebugDetails(context: "LoginStore.handleAppleSignInCompletion")
                 showErrorMessage("Apple Sign In failed: \(error.localizedDescription)")
             }
             
@@ -133,6 +136,7 @@ final class LoginStore {
             try await authService.signInWithGoogle()
             print("✅ Google Sign In successful")
         } catch {
+            error.printDebugDetails(context: "LoginStore.signInWithGoogle")
             showErrorMessage("Google Sign In failed: \(error.localizedDescription)")
         }
     }

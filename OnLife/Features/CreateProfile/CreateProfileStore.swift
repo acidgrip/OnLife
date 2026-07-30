@@ -202,6 +202,7 @@ final class CreateProfileStore {
             try await database.createUserProfile(profile)
             showSuccess = true
         } catch {
+            error.printDebugDetails(context: "CreateProfileStore.createProfile")
             showErrorMessage(error.localizedDescription)
         }
     }
